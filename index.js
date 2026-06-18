@@ -102,12 +102,13 @@ async function deleteProduct(input) {
 
 async function updateInventory(input) {
     //Usa esta mutation porque Shopify no permite actualizar inventario por productVariantsBulkUpdate
+    const idempotencyKey = crypto.randomUUID();
     const response = await axios.post(
         process.env.GRAPHQL_URL,
         JSON.stringify({
             query: `
                 mutation InventorySet($input: InventorySetQuantitiesInput!) {
-                    inventorySetQuantities(input: $input) {
+                    inventorySetQuantities(input: $input) @idempotent(key: "${idempotencyKey}") {
                         inventoryAdjustmentGroup {
                             changes {
                                 delta
@@ -184,13 +185,14 @@ async function updateProducts() {
                 if (variant.inventoryQuantity !== variantInventory) { //Actualiza la variante si el inventario ha cambiado
                     const variantToUpdate = {
                         quantities: {
+                            changeFromQuantity: null,
                             inventoryItemId: variant.inventoryItem.id, //Usa id de inventario porque usar id de variante o producto no funciona
                             locationId,
                             quantity: variantInventory,
                         },
                         name: "available",
                         reason: "correction",
-                        ignoreCompareQuantity: true, //Desactiva la comparación de inventario para siempre sobreescribir con la info del proveedor
+                        // ignoreCompareQuantity: true, //Desactiva la comparación de inventario para siempre sobreescribir con la info del proveedor
                     };
                     const response = await updateInventory(variantToUpdate);
                     console.log('Inventario actualizado:', response.changes);
