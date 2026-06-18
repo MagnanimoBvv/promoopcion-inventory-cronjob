@@ -16,8 +16,8 @@ jobs:
     env:
       GRAPHQL_URL: ${{ secrets[ format('GRAPHQL_URL_{0}', matrix.store) ] }}
       SHOPIFY_TOKEN: ${{ secrets[ format('SHOPIFY_TOKEN_{0}', matrix.store) ] }}
-      USER_PO: ${{ secrets.USER_PO }}
-      PASSWORD_PO: ${{ secrets.PASSWORD_PO }}
+      PO_USER: ${{ secrets.PO_USER }}
+      PO_PASS: ${{ secrets.PO_PASS }}
 
     steps:
       - uses: actions/checkout@v4
