@@ -1,5 +1,5 @@
-const axios = require('axios');
 require('dotenv').config();
+const axios = require('axios');
 const { uploadProduct } = require('./uploadProduct');
 const { getLocationId } = require('./getLocations');
 const { getPublications } = require('./getPublications');
@@ -154,7 +154,7 @@ async function updateProducts() {
 
             const handle = `po-${product.skuPadre}`.trim().toLowerCase().replace(/-+$/g, '').replace(/[\s/]+/g, '-'); // Reemplaza espacios y diagonales y quita guiones al final
             // const handle = `${product.nombrePadre} ${product.skuPadre}`.trim().toLowerCase().replace(/[\s/]+/g, '-').replace(/-+$/g, ''); // Reemplaza espacios y diagonales y quita guiones al final
-            let shopifyProduct = await getProductByHandle(handle);
+            const shopifyProduct = await getProductByHandle(handle);
             // if (shopifyProduct && activeVariants.length === 0) { // Borra producto subido sin variantes activas
             //     const deletedProduct = await deleteProduct({ id: shopifyProduct.id });
             //     console.log(`Producto borrado: ${handle} (${deletedProduct.deletedProductId})`);
