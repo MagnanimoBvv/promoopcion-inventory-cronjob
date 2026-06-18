@@ -20,13 +20,14 @@ async function getPromoOpcionProducts() {
     return response.data;
 }
 
-async function getVariantInventory(sku) {
+async function getPromoOpcionInventory() {
+// async function getVariantInventory(sku) {
     const response = await axios.post(
         'https://promocionalesenlinea.net/api/all-stocks',
         JSON.stringify({
             user: process.env.USER_PO,
             password: process.env.PASSWORD_PO,
-            sku,
+            // sku,
         }), {
             headers: {
                 'Content-Type': 'application/json',
@@ -53,6 +54,7 @@ async function getProductByHandle(handle) {
                         variants(first: 250) {
                             nodes {
                                 title
+                                sku
                                 inventoryQuantity
                                 inventoryItem {
                                     id
@@ -135,8 +137,10 @@ async function updateInventory(input) {
 
 async function updateProducts() {
     const responseProducts = await getPromoOpcionProducts();
-
     if (!responseProducts.success) return;
+
+    const responseInventory = await getPromoOpcionInventory();
+    if (!responseInventory.success) return;
 
     const locationId = await getLocationId();
     const productPublications = await getPublications();
@@ -144,31 +148,37 @@ async function updateProducts() {
     for (const product of products) {
         try {
             // if (product.skuPadre !== 'PET 008') continue; // If para pruebas con un producto específico
-            const activeVariants = product.hijos.filter(variant => variant.estatus === '1');
+            const activeVariants = product.hijos;
+            // const activeVariants = product.hijos.filter(variant => variant.estatus === '1');
 
-            const handle = `${product.nombrePadre} ${product.skuPadre}`.trim().toLowerCase().replace(/[\s/]+/g, '-').replace(/-+$/g, ''); // Reemplaza espacios y diagonales y quita guiones al final
+            const handle = `po-${product.skuPadre}`.trim().toLowerCase().replace(/-+$/g, '').replace(/[\s/]+/g, '-'); // Reemplaza espacios y diagonales y quita guiones al final
+            // const handle = `${product.nombrePadre} ${product.skuPadre}`.trim().toLowerCase().replace(/[\s/]+/g, '-').replace(/-+$/g, ''); // Reemplaza espacios y diagonales y quita guiones al final
             let shopifyProduct = await getProductByHandle(handle);
-            if (shopifyProduct && activeVariants.length === 0) { // Borra producto subido sin variantes activas
-                const deletedProduct = await deleteProduct({ id: shopifyProduct.id });
-                console.log(`Producto borrado: ${handle} (${deletedProduct.deletedProductId})`);
-                continue;
-            }
+            // if (shopifyProduct && activeVariants.length === 0) { // Borra producto subido sin variantes activas
+            //     const deletedProduct = await deleteProduct({ id: shopifyProduct.id });
+            //     console.log(`Producto borrado: ${handle} (${deletedProduct.deletedProductId})`);
+            //     continue;
+            // }
             if (!shopifyProduct) {
-                if (activeVariants.length === 0) continue; // Salta producto sin variantes activas
+                continue;
+                // if (activeVariants.length === 0) continue; // Salta producto sin variantes activas
 
-                const isUploaded = await uploadProduct(product, locationId, productPublications); // Intenta subir producto
-                if (!isUploaded) continue;
-                shopifyProduct = await getProductByHandle(handle);
+                // const isUploaded = await uploadProduct(product, locationId, productPublications); // Intenta subir producto
+                // if (!isUploaded) continue;
+                // shopifyProduct = await getProductByHandle(handle);
             }
 
             const hasSize = productHasSize(activeVariants);
             const shopifyVariants = shopifyProduct.variants.nodes;
             for (const activeVariant of activeVariants) {
-                const variantTitle = hasSize ? `${activeVariant.color} / ${activeVariant.talla}` : activeVariant.color;
-                const variant = shopifyVariants.find(v => v.title === variantTitle);
+                // const variantTitle = hasSize ? `${activeVariant.color} / ${activeVariant.talla}` : activeVariant.color;
+                const variant = shopifyVariants.find(v => v.sku === activeVariant.skuHijo);
+                // const variant = shopifyVariants.find(v => v.title === variantTitle);
 
-                const responseInventory = await getVariantInventory(activeVariant.skuHijo);
-                const variantInventory = responseInventory.Stocks.reduce((acum, item) => acum + item.Stock, 0); // Suma el inventario de todas las ubicaciones
+                const vendorInventory = responseInventory.Stocks.filter(item => item.Material === activeVariant.skuHijo);
+                // const responseInventory = await getVariantInventory(activeVariant.skuHijo);
+                const variantInventory = vendorInventory.reduce((acum, item) => acum + item.Stock, 0); // Suma el inventario de todas las ubicaciones
+                // const variantInventory = responseInventory.Stocks.reduce((acum, item) => acum + item.Stock, 0); // Suma el inventario de todas las ubicaciones
                 console.log(`Variante encontrada: ${shopifyProduct.title} ${variant.title}, Inventario: Prev ${variant.inventoryQuantity} Now ${variantInventory}`);
 
                 if (variant.inventoryQuantity !== variantInventory) { //Actualiza la variante si el inventario ha cambiado
